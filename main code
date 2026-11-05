@@ -1,0 +1,166 @@
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+
+#define MAX_GUESTS 50
+
+struct Guest {
+    char name[50];
+    int roomNumber;
+    int bookingDays;  
+    time_t checkInTime;  
+};
+
+struct Guest guests[MAX_GUESTS];
+int guestCount = 0;
+
+// Clear the input buffer to prevent infinite loops on invalid input
+void clearBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+void saveData() {
+    FILE *file = fopen("guests.dat", "wb");
+    if (file == NULL) {
+        printf("Error saving data!\n");
+        return;
+    }
+    fwrite(&guestCount, sizeof(int), 1, file);
+    fwrite(guests, sizeof(struct Guest), guestCount, file);
+    fclose(file);
+}
+
+
+void loadData() {
+    FILE *file = fopen("guests.dat", "rb");
+    if (file == NULL) {
+        return;  
+    }
+    fread(&guestCount, sizeof(int), 1, file);
+    fread(guests, sizeof(struct Guest), guestCount, file);
+    fclose(file);
+}
+
+void addGuest() {
+    if (guestCount >= MAX_GUESTS) {
+        printf("Hotel full! Cannot add more guests.\n");
+        return;
+    }
+
+    struct Guest newGuest;
+    
+    printf("Enter guest name: ");
+    scanf(" %[^\n]", newGuest.name);  
+    
+    printf("Enter room number: ");
+    while (scanf("%d", &newGuest.roomNumber) != 1) {
+        printf("Invalid input. Enter room number (integer): ");
+        clearBuffer();
+    }
+    
+    printf("Enter number of booking days: ");
+    while (scanf("%d", &newGuest.bookingDays) != 1) {
+        printf("Invalid input. Enter booking days (integer): ");
+        clearBuffer();
+    }
+
+    newGuest.checkInTime = time(NULL); 
+    
+    guests[guestCount] = newGuest;
+    guestCount++;
+
+    saveData();
+    printf("Guest added successfully.\n");
+}
+
+void removeGuest() {
+    int room;
+    printf("Enter room number to check out: ");
+    while (scanf("%d", &room) != 1) {
+        printf("Invalid input. Enter room number (integer): ");
+        clearBuffer();
+    }
+
+    int found = 0;
+    for (int i = 0; i < guestCount; i++) {
+        if (guests[i].roomNumber == room) {
+            found = 1;
+            for (int j = i; j < guestCount - 1; j++) {
+                guests[j] = guests[j + 1]; 
+            }
+            guestCount--;
+            saveData();
+            printf("Guest checked out successfully.\n");
+            break;
+        }
+    }
+    if (!found) {
+        printf("No guest found with room number %d.\n", room);
+    }
+}
+
+void showBookingTimes() {
+    if (guestCount == 0) {
+        printf("No guests currently booked.\n");
+        return;
+    }
+
+    time_t now = time(NULL);
+    for (int i = 0; i < guestCount; i++) {
+        double secondsPassed = difftime(now, guests[i].checkInTime);
+        int daysPassed = (int)(secondsPassed / (24 * 3600));
+        int daysLeft = guests[i].bookingDays - daysPassed;
+
+        printf("Guest: %s, Room: %d, Days remaining: %d\n",
+               guests[i].name, guests[i].roomNumber, daysLeft > 0 ? daysLeft : 0);
+    }
+}
+
+void showAllGuests() {
+    if (guestCount == 0) {
+        printf("No guests currently booked.\n");
+        return;
+    }
+
+    printf("Current Guests:\n");
+    for (int i = 0; i < guestCount; i++) {
+        printf("Name: %s, Room: %d, Booking Days: %d\n",
+               guests[i].name, guests[i].roomNumber, guests[i].bookingDays);
+    }
+}
+
+void menu() {
+    int choice;
+    do {
+        printf("\nHotel Management System\n");
+        printf("1. Add Guest\n");
+        printf("2. Remove Guest (Checkout)\n");
+        printf("3. Show Booking Times\n");
+        printf("4. Show All Guests\n");
+        printf("5. Exit\n");
+        printf("Enter your choice: ");
+        
+        if (scanf("%d", &choice) != 1) {
+            printf("Invalid option. Try again.\n");
+            clearBuffer();
+            choice = 0; // Reset choice to keep loop running
+            continue;
+        }
+
+        switch(choice) {
+            case 1: addGuest(); break;
+            case 2: removeGuest(); break;
+            case 3: showBookingTimes(); break;
+            case 4: showAllGuests(); break;
+            case 5: printf("Exiting...\n"); break;
+            default: printf("Invalid option. Try again.\n");
+        }
+    } while (choice != 5);
+}
+
+int main() {
+    loadData(); 
+    menu();
+    return 0;
+}
